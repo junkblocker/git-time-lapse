@@ -2,12 +2,12 @@ function! Display(commit)
 	windo %d
 	diffoff!
 	wincmd t
-	exe ':silent :0 read !git show '.a:commit.'^:'.s:path
-	exe 'doautocmd filetypedetect BufRead '.s:path
+	exe ':silent :0 read !git show '.a:commit.'^:'.t:path
+	exe 'doautocmd filetypedetect BufRead '.t:path
 
 	wincmd l
-	exe ':silent :0 read !git show '.a:commit.':'.s:path
-	exe 'doautocmd filetypedetect BufRead '.s:path
+	exe ':silent :0 read !git show '.a:commit.':'.t:path
+	exe 'doautocmd filetypedetect BufRead '.t:path
 
 	wincmd j
 	exe ':silent :0 read !git log --stat '.a:commit.'^..'.a:commit
@@ -20,23 +20,23 @@ function! Display(commit)
 endfunction
 
 function! Goto(pos)
-	let s:current = a:pos
+	let t:current = a:pos
 
-	if s:current < 0
-		let s:current = 0
+	if t:current < 0
+		let t:current = 0
 		return 0
-	elseif s:current >= g:total - 1
-		let s:current = g:total - 2
+	elseif t:current >= g:total - 1
+		let t:current = g:total - 2
 		return 0
 	endif
 
-	call Display(s:commits[s:current])
+	call Display(t:commits[t:current])
 	return 1
 endfunction
 
 function! Move(amount)
-	let s:current = s:current + a:amount
-	call Goto(s:current)
+	let t:current = t:current + a:amount
+	call Goto(t:current)
 endfunction
 
 function! GotoNextChange(dir)
@@ -61,14 +61,14 @@ endfunction
 
 function! GetLog()
 	let tmpfile = tempname()
-	exe ':silent :!git log --pretty=format:"\%H" '.s:path.' > '.tmpfile
-	let s:commits = readfile(tmpfile)
+	exe ':silent :!git log --pretty=format:"\%H" '.t:path.' > '.tmpfile
+	let t:commits = readfile(tmpfile)
 	call delete(tmpfile)
-	let g:total = len(s:commits)
+	let g:total = len(t:commits)
 
 	" The first line in the file is the most recent commit
-	let s:current = 0
-	call Display(s:commits[s:current])
+	let t:current = 0
+	call Display(t:commits[t:current])
 endfunction
 
 function! ChDir()
@@ -85,7 +85,7 @@ endfunction
 function! TimeLapse()
 	" Open a new tab with a time-lapse view of the file in the current
 	" buffer.
-	let s:path = ChDir()
+	let path = ChDir()
 
 	tabnew
 	set buftype=nofile
@@ -101,6 +101,7 @@ function! TimeLapse()
 	vnew
 	set buftype=nofile
 
+	let t:path = path
 	call GetLog()
 
 	" Go backwards and forwards one commit
