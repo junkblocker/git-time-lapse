@@ -39,24 +39,23 @@ function! Move(amount)
 	call Goto(t:current)
 endfunction
 
-function! GotoNextChange(dir)
-	"Rewind or fast-forward to the next change that affects the current line.
-	"Doesn't work too well though because the line number has probably changed
-	"(if lines above were added or removed)
+function! Blame()
+	let current = t:commits[t:current]
 	let line = getpos(".")[1]
 
-	while 1
-		wincmd t
-		let before = getline(line)
+	mark A
+	wincmd t
+	wincmd j
+	exe ':silent :read !git blame -s -L'.line.','.line.' '.t:path
+	normal "adiw
+	delete
 
-		wincmd l
-		let after = getline(line)
+	if @a =~ "fatal"
+		return
+	endif
 
-		if before != after || !Move(a:dir)
-			break
-		endif
-
-	endwhile
+	exe 'call Display("'.@a.'")'
+	normal 'A
 endfunction
 
 function! GetLog()
@@ -112,7 +111,6 @@ function! TimeLapse()
 	map <buffer> <S-Left> :call Goto(g:total - 2) <cr>
 	map <buffer> <S-Right> :call Goto(0) <cr>
 
-	map <buffer> <C-S-Left> :call GotoNextChange(1) <cr>
-	map <buffer> <C-S-Right> :call GotoNextChange(-1) <cr>
+	map <buffer>  :call Blame() <cr>
 
 endfunction
