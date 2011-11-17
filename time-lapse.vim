@@ -44,8 +44,8 @@ function! Blame()
 	let line = getpos(".")[1]
 
 	let tmpfile = tempname()
-	exe ':silent :read !git blame -s -n -L'.line.','.
-				\line.' '.t:path.' > '.tmpfile
+	exe ':silent :read !git blame -s -n -L'.line.','.line.' '.
+				\current.' -- '.t:path.' > '.tmpfile
 	let output = readfile(tmpfile)
 	call delete(tmpfile)
 	let results = split(output[0])
