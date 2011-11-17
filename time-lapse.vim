@@ -43,19 +43,20 @@ function! Blame()
 	let current = t:commits[t:current]
 	let line = getpos(".")[1]
 
-	mark A
-	wincmd t
-	wincmd j
-	exe ':silent :read !git blame -s -L'.line.','.line.' '.t:path
-	normal "adiw
-	delete
+	let tmpfile = tempname()
+	exe ':silent :read !git blame -s -n -L'.line.','.
+				\line.' '.t:path.' > '.tmpfile
+	let output = readfile(tmpfile)
+	call delete(tmpfile)
+	let results = split(output[0])
 
-	if @a =~ "fatal"
+	if results[0] == "fatal:"
 		return
 	endif
 
-	exe 'call Display("'.@a.'")'
-	normal 'A
+	call Display(results[0])
+	exe ':'.results[1]
+	normal z.
 endfunction
 
 function! GetLog()
