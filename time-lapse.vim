@@ -54,7 +54,13 @@ function! Blame()
 		return
 	endif
 
-	call Display(results[0])
+	for i in range(len(t:commits))
+		if t:commits[i] =~ results[0]
+			call Goto(i)
+			break
+		endif
+	endfor
+
 	exe ':'.results[1]
 	normal z.
 endfunction
