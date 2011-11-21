@@ -111,13 +111,12 @@ function! TimeLapse()
 	call GetLog()
 
 	" Go backwards and forwards one commit
-	map <buffer> <Left> :call Move(1) <cr>
-	map <buffer> <Right> :call Move(-1) <cr>
+	windo map <buffer> <Left> :call Move(1) <cr>
+	windo map <buffer> <Right> :call Move(-1) <cr>
 
 	" Rewind all the way to the start or end
-	map <buffer> <S-Left> :call Goto(g:total - 2) <cr>
-	map <buffer> <S-Right> :call Goto(0) <cr>
+	windo map <buffer> <S-Left> :call Goto(g:total - 2) <cr>
+	windo map <buffer> <S-Right> :call Goto(0) <cr>
 
-	map <buffer>  :call Blame() <cr>
-
+	windo map <buffer>  :call Blame() <cr>
 endfunction
