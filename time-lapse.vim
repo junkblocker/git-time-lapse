@@ -25,8 +25,8 @@ function! Goto(pos)
 	if t:current < 0
 		let t:current = 0
 		return 0
-	elseif t:current >= g:total - 1
-		let t:current = g:total - 2
+	elseif t:current >= t:total - 1
+		let t:current = t:total - 2
 		return 0
 	endif
 
@@ -70,11 +70,8 @@ function! GetLog()
 	exe ':silent :!git log --pretty=format:"\%H" '.t:path.' > '.tmpfile
 	let t:commits = readfile(tmpfile)
 	call delete(tmpfile)
-	let g:total = len(t:commits)
-
-	" The first line in the file is the most recent commit
-	let t:current = 0
-	call Display(t:commits[t:current])
+	let t:total = len(t:commits)
+	return t:total
 endfunction
 
 function! ChDir()
@@ -94,6 +91,13 @@ function! TimeLapse()
 	let path = ChDir()
 
 	tabnew
+	let t:path = path
+
+	if GetLog() <= 1
+		tabclose
+		return
+	endif
+
 	set buftype=nofile
 
 	new
@@ -107,15 +111,16 @@ function! TimeLapse()
 	vnew
 	set buftype=nofile
 
-	let t:path = path
-	call GetLog()
+	" The first line in the file is the most recent commit
+	let t:current = 0
+	call Display(t:commits[t:current])
 
 	" Go backwards and forwards one commit
 	windo map <buffer> <Left> :call Move(1) <cr>
 	windo map <buffer> <Right> :call Move(-1) <cr>
 
 	" Rewind all the way to the start or end
-	windo map <buffer> <S-Left> :call Goto(g:total - 2) <cr>
+	windo map <buffer> <S-Left> :call Goto(t:total - 2) <cr>
 	windo map <buffer> <S-Right> :call Goto(0) <cr>
 
 	windo map <buffer>  :call Blame() <cr>
