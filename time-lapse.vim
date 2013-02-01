@@ -61,7 +61,7 @@ function! Blame()
 		endif
 	endfor
 
-	exe ':'.results[1]
+	exe ':'.line
 	normal z.
 endfunction
 
