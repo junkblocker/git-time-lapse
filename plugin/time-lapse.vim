@@ -2,15 +2,15 @@ function! Display(commit)
 	windo %d
 	diffoff!
 	wincmd t
-	exe ':silent :0 read !git show '.a:commit.'^:'.t:path
+	exe ':silent :0 read !git show "'.a:commit.'^:'.t:path.'"'
 	exe 'doautocmd filetypedetect BufRead '.t:path
 
 	wincmd l
-	exe ':silent :0 read !git show '.a:commit.':'.t:path
+	exe ':silent :0 read !git show "'.a:commit.':'.t:path.'"'
 	exe 'doautocmd filetypedetect BufRead '.t:path
 
 	wincmd j
-	exe ':silent :0 read !git log --stat '.a:commit.'^..'.a:commit
+	exe ':silent :0 read !git log --stat "'.a:commit.'^..'.a:commit.'"'
 	setfiletype git
 
 	wincmd t
