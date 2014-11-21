@@ -1,4 +1,6 @@
+" vim: sw=4 ts=4 noexpandtab
 function! Display(commit)
+	" clears all input in every buffer of the tab
 	windo %d
 	diffoff!
 	wincmd t
@@ -19,8 +21,18 @@ function! Display(commit)
 	wincmd l
 	diffthis
 
-	" Move back to where we were
-	exe ':'.s:here
+	" Move back to where we were if it's still there, otherwise go to the top
+	if s:here <= line('$')
+		exe ':'.s:here
+	else
+		:0
+	endif
+
+	normal z.
+
+	" Some people have reported that you need to do this to make sure the left
+	" buffer is in the right place.
+	wincmd t
 	normal z.
 
 	wincmd j
