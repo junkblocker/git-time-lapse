@@ -116,6 +116,7 @@ function! s:ChDir()
 	exe 'lcd ' . s:fnameescape(l:rdir)
 	silent! let l:git_dir = system('git rev-parse --git-dir')
 	let l:git_dir = resolve(fnamemodify(matchstr(l:git_dir, '^\zs.*\.git\ze'), ':p'))
+	let l:git_dir = substitute(l:git_dir, '\([^/]\)/\+$', '\1', '')
 	let l:sourcedir = fnamemodify(l:git_dir, ':h')
 	exe 'lcd ' . s:fnameescape(l:sourcedir)
 	return l:rfile[strlen(l:git_dir)-4:]
