@@ -59,7 +59,7 @@ Use details
 
 Drop time-lapse.vim into .vim/plugin and map a key in your .vimrc, e.g.::
 
-      map <leader>gt :call TimeLapse()<cr>
+      nmap <Leader>gt <Plug>(git-time-lapse)
 
 or however you prefer.
 

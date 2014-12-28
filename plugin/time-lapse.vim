@@ -122,7 +122,7 @@ function! s:ChDir()
 	return l:rfile[strlen(l:git_dir)-4:]
 endfunction
 
-function! TimeLapse()
+function! s:TimeLapse()
 	" Open a new tab with a time-lapse view of the file in the current
 	" buffer.
 	let path = s:ChDir()
@@ -170,3 +170,4 @@ function! TimeLapse()
 	exe ':'.s:here
 	normal z.
 endfunction
+noremap  <silent> <script> <Plug>(git-time-lapse)  :<C-u>call <SID>TimeLapse()<CR>
