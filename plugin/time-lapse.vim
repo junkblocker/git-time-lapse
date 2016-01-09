@@ -122,7 +122,7 @@ function! s:ChDir()
 	return l:rfile[strlen(l:git_dir)-4:]
 endfunction
 
-function! s:TimeLapse()
+function! s:git_time_lapse()
 	" Open a new tab with a time-lapse view of the file in the current
 	" buffer.
 	let path = s:ChDir()
@@ -154,14 +154,14 @@ function! s:TimeLapse()
 	call s:Display(t:commits[t:current])
 
 	" Go backwards and forwards one commit
-	exe 'windo map <buffer> <Left> :call ' . s:SID . 'Move(1) <cr>'
-	exe 'windo map <buffer> <Right> :call ' . s:SID . 'Move(-1) <cr>'
+	exe 'windo map <buffer> <silent> <Left> :call ' . s:SID . 'Move(1) <cr>'
+	exe 'windo map <buffer> <silent> <Right> :call ' . s:SID . 'Move(-1) <cr>'
 
 	" Rewind all the way to the start or end
-	exe 'windo map <buffer> <S-Left> :call ' . s:SID . 'Goto(t:total - 2) <cr>'
-	exe 'windo map <buffer> <S-Right> :call ' . s:SID . 'Goto(0) <cr>'
+	exe 'windo map <buffer> <silent> <S-Left> :call ' . s:SID . 'Goto(t:total - 2) <cr>'
+	exe 'windo map <buffer> <silent> <S-Right> :call ' . s:SID . 'Goto(0) <cr>'
 
-	exe 'windo map <buffer>  :call ' . s:SID . 'Blame() <cr>'
+	exe 'windo map <buffer> <silent>  :call ' . s:SID . 'Blame() <cr>'
 
 	" Go to the top right window (which contains the latest version of the
 	" file) and go back to the line we were on when we opened the time-lapse,
@@ -170,4 +170,6 @@ function! s:TimeLapse()
 	exe ':'.s:here
 	normal z.
 endfunction
-noremap  <silent> <script> <Plug>(git-time-lapse)  :<C-u>call <SID>TimeLapse()<CR>
+
+com! -nargs=0 GitTimeLapse call s:git_time_lapse()
+noremap  <silent> <script> <Plug>(git-time-lapse)  :<C-u>call <SID>git_time_lapse()<CR>

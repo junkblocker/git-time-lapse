@@ -1,6 +1,6 @@
-==============
-git-time-lapse
-==============
+=================
+`git-time-lapse`_
+=================
 
 Fork of `git-time-lapse: Perforce-style`_ for vim
 
@@ -26,21 +26,23 @@ Option 1: Use a bundle manager
 ------------------------------
 
 Use your favorite vim package manager to install from the github repository for
-the project.
+the project. e.g. with NeoBundle:
 
-Example 1: Installation with NeoBundle
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-::
+.. code:: vim
 
       NeoBundle 'junkblocker/git-time-lapse'
 
-Example 2: Installation with vundle
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+or with Vundle:
 
-::
+.. code:: vim
 
       Bundle "junkblocker/git-time-lapse"
+
+or with vim-plug:
+
+.. code:: vim
+
+      Plug "junkblocker/git-time-lapse"
 
 Option 2: Install by hand
 -------------------------
@@ -48,7 +50,7 @@ Option 2: Install by hand
 Via git
 ~~~~~~~
 
-::
+.. code:: sh
 
       cd ~/.vim
       git clone --recursive https://github.com/junkblocker/git-time-lapse.git
@@ -57,11 +59,22 @@ Via git
 Use details
 -----------
 
-Drop time-lapse.vim into .vim/plugin and map a key in your .vimrc, e.g.::
+Drop time-lapse.vim into .vim/plugin and map a key in your .vimrc, e.g.:
+
+.. code:: vim
 
       nmap <Leader>gt <Plug>(git-time-lapse)
 
-or however you prefer.
+or however you prefer. You can also use:
+
+.. code:: vim
+
+      :GitTimeLapse
+
+to run it.
+
+.. _`git-time-lapse`:
+   https://github.com/junkblocker/git-time-lapse
 
 .. _`git-time-lapse: Perforce-style`:
    http://vim.sourceforge.net/scripts/script.php?script_id=3849
