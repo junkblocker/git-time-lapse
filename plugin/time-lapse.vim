@@ -12,15 +12,15 @@ function! s:Display(commit)
 	windo %d
 	diffoff!
 	wincmd t
-	exe ':silent :0 read !git show "'.a:commit.'^:'.t:path.'"'
-	exe 'doautocmd filetypedetect BufRead '.t:path
+	exe ':silent :0 read !git show '.s:fnameescape(a:commit.'^:'.t:path)
+	exe 'doautocmd filetypedetect BufRead '.s:fnameescape(t:path)
 
 	wincmd l
-	exe ':silent :0 read !git show "'.a:commit.':'.t:path.'"'
-	exe 'doautocmd filetypedetect BufRead '.t:path
+	exe ':silent :0 read !git show '.s:fnameescape(a:commit.':'.t:path)
+	exe 'doautocmd filetypedetect BufRead '.s:fnameescape(t:path)
 
 	wincmd j
-	exe ':silent :0 read !git log --stat "'.a:commit.'^..'.a:commit.'"'
+	exe ':silent :0 read !git log --stat '.s:fnameescape(a:commit.'^..'.a:commit)
 	setfiletype git
 
 	wincmd t
@@ -71,8 +71,8 @@ function! s:Blame()
 	let current = t:commits[t:current]
 	let line = line('.')
 
-	let output = system('git blame -p -n -L'.line.','.line.' '.
-						\current.' -- '.t:path)
+	let output = system('git blame -p -n -L'.shellescape(line).','.shellescape(line).' '.
+						\shellescape(current).' -- '.shellescape(t:path))
 
 	let results = split(output)
 
@@ -96,15 +96,27 @@ endfunction
 
 function! s:GetLog()
 	let tmpfile = tempname()
-	exe ':silent :!git log --no-merges --pretty=format:"\%H" '.t:path.' > '.tmpfile
+	exe ':silent :!git log --no-merges --pretty=format:"\%H" '.s:fnameescape(t:path).' > '.s:fnameescape(tmpfile)
 	let t:commits = readfile(tmpfile)
 	call delete(tmpfile)
 	let t:total = len(t:commits)
 	return t:total
 endfunction
 
-function! s:fnameescape(p) " {{{
-	return substitute(fnameescape(a:p), '[()]', '\\&', 'g')
+function! s:fnameescape(path) " {{{
+    if (v:version >= 702)
+        let l:ret = escape(fnameescape(a:path), '&[<()>]^:')
+    else
+        " This is not a complete list of escaped character, so it's not as
+        " sophisticated as the fnameescape, but this should cover most of the cases
+        " and should work for Vim version < 7.2
+        let l:ret = escape(a:path, " \t\n*?[{`$\\%#'\"|!<()^:&")
+    endif
+    " Handle zsh issues
+    if &shell =~? 'zsh\(\.exe\)\?$'
+        let l:ret = substitute(l:ret, '\\#', '\\\\#', 'g')
+    endif
+    return l:ret
 endfunction
 
 function! s:ChDir()
@@ -161,7 +173,8 @@ function! s:git_time_lapse()
 	exe 'windo map <buffer> <silent> <S-Left> :call ' . s:SID . 'Goto(t:total - 2) <cr>'
 	exe 'windo map <buffer> <silent> <S-Right> :call ' . s:SID . 'Goto(0) <cr>'
 
-	exe 'windo map <buffer> <silent>  :call ' . s:SID . 'Blame() <cr>'
+	exe 'windo map <buffer> <silent> 
+ :call ' . s:SID . 'Blame() <cr>'
 
 	" Go to the top right window (which contains the latest version of the
 	" file) and go back to the line we were on when we opened the time-lapse,
