@@ -173,7 +173,7 @@ function! s:git_time_lapse()
 	exe 'windo map <buffer> <silent> <S-Left> :call ' . s:SID . 'Goto(t:total - 2) <cr>'
 	exe 'windo map <buffer> <silent> <S-Right> :call ' . s:SID . 'Goto(0) <cr>'
 
-+	exe 'windo map <buffer> <silent> <CR> :call ' . s:SID . 'Blame() <cr>'
+	exe 'windo map <buffer> <silent> <CR> :call ' . s:SID . 'Blame() <cr>'
 
 	" Go to the top right window (which contains the latest version of the
 	" file) and go back to the line we were on when we opened the time-lapse,
