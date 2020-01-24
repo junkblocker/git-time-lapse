@@ -19,53 +19,17 @@ open as many time-lapse tabs on different files in one vim session as you want.
 
 Inspired by the "time lapse view" in the Perforce gui.
 
-Installation
-============
 
-Option 1: Use a bundle manager
-------------------------------
+Use
+===
 
-Use your favorite vim package manager to install from the github repository for
-the project. e.g. with NeoBundle:
-
-.. code:: vim
-
-      NeoBundle 'junkblocker/git-time-lapse'
-
-or with Vundle:
-
-.. code:: vim
-
-      Bundle "junkblocker/git-time-lapse"
-
-or with vim-plug:
-
-.. code:: vim
-
-      Plug "junkblocker/git-time-lapse"
-
-Option 2: Install by hand
--------------------------
-
-Via git
-~~~~~~~
-
-.. code:: sh
-
-      cd ~/.vim
-      git clone --recursive https://github.com/junkblocker/git-time-lapse.git
-
-
-Use details
------------
-
-Drop time-lapse.vim into .vim/plugin and map a key in your .vimrc, e.g.:
+Map a key in your .vimrc, e.g.:
 
 .. code:: vim
 
       nmap <Leader>gt <Plug>(git-time-lapse)
 
-or however you prefer. You can also use:
+or use the command:
 
 .. code:: vim
 
