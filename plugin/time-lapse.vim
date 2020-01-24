@@ -120,18 +120,17 @@ function! s:fnameescape(path) " {{{
 endfunction
 
 function! s:ChDir()
-	" Change directory to the one with .git in it and return path to the
-	" current file from there. If you live in this directory and execute git
-	" commands on that path then everything will work.
+	" Change directory to the workspace toplevel and return path to the
+	" current file from there.
 	let l:rfile = resolve(expand('%:p'))
 	let l:rdir = fnamemodify(l:rfile, ':h')
 	exe 'lcd ' . s:fnameescape(l:rdir)
-	silent! let l:git_dir = system('git rev-parse --git-dir')
-	let l:git_dir = resolve(fnamemodify(matchstr(l:git_dir, '^\zs.*\.git\ze'), ':p'))
-	let l:git_dir = substitute(l:git_dir, '\([^/]\)/\+$', '\1', '')
-	let l:sourcedir = fnamemodify(l:git_dir, ':h')
-	exe 'lcd ' . s:fnameescape(l:sourcedir)
-	return l:rfile[strlen(l:git_dir)-4:]
+	silent! let l:sourcedir = system('git rev-parse --show-toplevel 2>/dev/null' )
+	if !v:shell_error && l:sourcedir != ''
+		let l:sourcedir = substitute(l:sourcedir, "[\r\n].*", '', '')
+		exe 'lcd ' . s:fnameescape(l:sourcedir)
+		return l:rfile[strlen(l:sourcedir)+1:]
+	endif
 endfunction
 
 function! s:git_time_lapse()
