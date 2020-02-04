@@ -1,18 +1,18 @@
 " vim: set et fdm=diff fenc=utf-8 ff=unix sts=0 sw=4 ts=4 tw=79 wrap :
-function! gittimelapse#display(commit)
+function! s:display(commit)
     " clears all input in every buffer of the tab
     windo %d
     diffoff!
     wincmd t
-    exe ':silent :0 read !git show '.gittimelapse#fnameescape(a:commit.'^:'.t:path)
-    exe 'doautocmd filetypedetect BufRead '.gittimelapse#fnameescape(t:path)
+    exe ':silent :0 read !git show '.a:commit.s:fnameescape('^:').s:fnameescape(t:path)
+    exe 'doautocmd filetypedetect BufRead '.s:fnameescape(t:path)
 
     wincmd l
-    exe ':silent :0 read !git show '.gittimelapse#fnameescape(a:commit.':'.t:path)
-    exe 'doautocmd filetypedetect BufRead '.gittimelapse#fnameescape(t:path)
+    exe ':silent :0 read !git show '.a:commit.s:fnameescape(':').s:fnameescape(t:path)
+    exe 'doautocmd filetypedetect BufRead '.s:fnameescape(t:path)
 
     wincmd j
-    exe ':silent :0 read !git log --stat '.gittimelapse#fnameescape(a:commit.'^..'.a:commit)
+    exe ':silent :0 read !git log --stat '.a:commit.s:fnameescape('^..').a:commit
     setfiletype git
 
     wincmd t
@@ -37,10 +37,10 @@ function! gittimelapse#display(commit)
 
     wincmd j
     :0
-    "echohl None | echo '' | echon 'gittimelapse#display(' . a:commit . ') ... done.'
+    "echohl None | echo '' | echon 's:display(' . a:commit . ') ... done.'
 endfunction
 
-function! gittimelapse#goto(pos)
+function! s:goto(pos)
     let t:current = a:pos
 
     if t:current < 0
@@ -51,17 +51,17 @@ function! gittimelapse#goto(pos)
         return 0
     endif
 
-    call gittimelapse#display(t:commits[t:current])
+    call s:display(t:commits[t:current])
     return 1
 endfunction
 
-function! gittimelapse#move(amount)
+function! s:move(amount)
     let t:current = t:current + a:amount
-    call gittimelapse#goto(t:current)
+    call s:goto(t:current)
     redraw!
 endfunction
 
-function! gittimelapse#blame()
+function! s:blame()
     let current = t:commits[t:current]
     let line = line('.')
 
@@ -76,7 +76,7 @@ function! gittimelapse#blame()
 
     for i in range(len(t:commits))
         if t:commits[i] =~ results[0]
-            call gittimelapse#goto(i)
+            call s:goto(i)
             break
         endif
     endfor
@@ -88,16 +88,16 @@ function! gittimelapse#blame()
     wincmd j
 endfunction
 
-function! gittimelapse#get_log()
+function! s:get_log()
     let tmpfile = tempname()
-    exe ':silent :!git log --no-merges --pretty=format:"\%H" '.gittimelapse#fnameescape(t:path).' > '.gittimelapse#fnameescape(tmpfile)
+    exe ':silent :!git log --no-merges ' . s:fnameescape('--pretty=format:"%H"'). ' '.s:fnameescape(t:path).' > '.s:fnameescape(tmpfile)
     let t:commits = readfile(tmpfile)
     call delete(tmpfile)
     let t:total = len(t:commits)
     return t:total
 endfunction
 
-function! gittimelapse#fnameescape(path) " {{{
+function! s:fnameescape(path) " {{{
     if (v:version >= 702)
         let l:ret = escape(fnameescape(a:path), '&[<()>]^:')
     else
@@ -113,16 +113,16 @@ function! gittimelapse#fnameescape(path) " {{{
     return l:ret
 endfunction
 
-function! gittimelapse#chdir()
+function! s:chdir()
     " Change directory to the workspace toplevel and return path to the
     " current file from there.
     let l:rfile = resolve(expand('%:p'))
     let l:rdir = fnamemodify(l:rfile, ':h')
-    exe 'lcd ' . gittimelapse#fnameescape(l:rdir)
+    exe 'lcd ' . s:fnameescape(l:rdir)
     silent! let l:sourcedir = system('git rev-parse --show-toplevel 2>/dev/null' )
     if !v:shell_error && l:sourcedir != ''
         let l:sourcedir = substitute(l:sourcedir, "[\r\n].*", '', '')
-        exe 'lcd ' . gittimelapse#fnameescape(l:sourcedir)
+        exe 'lcd ' . s:fnameescape(l:sourcedir)
         return l:rfile[strlen(l:sourcedir)+1:]
     endif
 endfunction
@@ -132,13 +132,14 @@ function! gittimelapse#git_time_lapse()
     try
         " Open a new tab with a time-lapse view of the file in the current
         " buffer.
-        let path = gittimelapse#chdir()
+        let path = s:chdir()
         let s:here = line('.')
 
         tabnew
         let t:path = path
 
-        if gittimelapse#get_log() <= 1
+        if s:get_log() <= 1
+            echoerr "Insufficient log entries"
             tabclose
             return
         endif
@@ -158,17 +159,17 @@ function! gittimelapse#git_time_lapse()
 
         " The first line in the file is the most recent commit
         let t:current = 0
-        call gittimelapse#display(t:commits[t:current])
+        call s:display(t:commits[t:current])
 
         " Go backwards and forwards one commit
-        windo map <buffer> <silent> <Left> :call gittimelapse#move(1)<cr>
-        windo map <buffer> <silent> <Right> :call gittimelapse#move(-1)<cr>
+        windo map <buffer> <silent> <Left> :call s:move(1)<cr>
+        windo map <buffer> <silent> <Right> :call s:move(-1)<cr>
 
         " Rewind all the way to the start or end
-        windo map <buffer> <silent> <S-Left> :call gittimelapse#goto(t:total - 2)<cr>
-        windo map <buffer> <silent> <S-Right> :call gittimelapse#goto(0)<cr>
+        windo map <buffer> <silent> <S-Left> :call s:goto(t:total - 2)<cr>
+        windo map <buffer> <silent> <S-Right> :call s:goto(0)<cr>
 
-        windo map <buffer> <silent> <CR> :call gittimelapse#blame()<cr>
+        windo map <buffer> <silent> <CR> :call s:blame()<cr>
 
         " Go to the top right window (which contains the latest version of the
         " file) and go back to the line we were on when we opened the time-lapse,
