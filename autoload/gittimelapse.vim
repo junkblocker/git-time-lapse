@@ -272,14 +272,14 @@ function! gittimelapse#git_time_lapse()
     call s:display(t:commits[t:current])
 
     " Go backwards and forwards one commit
-    windo map <buffer> <silent> <Left> :call s:move(1)<cr>
-    windo map <buffer> <silent> <Right> :call s:move(-1)<cr>
+    windo map <buffer> <silent> <Left> :call <SID>move(1)<cr>
+    windo map <buffer> <silent> <Right> :call <SID>move(-1)<cr>
 
     " Rewind all the way to the start or end
-    windo map <buffer> <silent> <S-Left> :call s:goto(t:total - 2)<cr>
-    windo map <buffer> <silent> <S-Right> :call s:goto(0)<cr>
+    windo map <buffer> <silent> <S-Left> :call <SID>goto(t:total - 2)<cr>
+    windo map <buffer> <silent> <S-Right> :call <SID>goto(0)<cr>
 
-    windo map <buffer> <silent> <CR> :call s:blame()<cr>
+    windo map <buffer> <silent> <CR> :call <SID>blame()<cr>
 
     " Go to the top right window (which contains the latest version of the
     " file) and go back to the line we were on when we opened the time-lapse,
