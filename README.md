@@ -1,6 +1,6 @@
 # [git-time-lapse](https://github.com/junkblocker/git-time-lapse)
 
-Fork of [git-time-lapse: Perforce-style](http://vim.sourceforge.net/scripts/script.php?script_id=3849) for vim
+Fork of [git-time-lapse: Perforce-style](http://vim.sourceforge.net/scripts/script.php?script_id=3849) for vim/neovim
 
 ## Description
 
