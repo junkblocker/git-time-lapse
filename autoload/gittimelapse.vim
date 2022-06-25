@@ -186,7 +186,7 @@ function! gittimelapse#git_time_lapse()
     windo map <buffer> <silent> <S-Left> :call <SID>goto(t:total - 2, 1)<cr>
     windo map <buffer> <silent> <S-Right> :call <SID>goto(0, 1)<cr>
 
-    windo map <buffer> <silent> <CR> :call <SID>move(0)<cr>
+    windo map <buffer> <silent> <CR> :call <SID>blame()<cr>
 
     " Go to the top right window (which contains the latest version of the
     " file) and go back to the line we were on when we opened the time-lapse,
