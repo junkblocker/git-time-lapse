@@ -11,7 +11,9 @@ message. Left and right arrows move through the history. Shift-left and
 shift-right go all the way to the end. Return on a line goes back to the
 last commit that touched that line (using git blame).
 
-Close the tab when you're bored with it and carry on vimming as usual.
+Close the tab when you're bored with it (:tabclose or :windo bd) and carry
+on vimming as usual.
+
 You can open as many time-lapse tabs on different files in one vim
 session as you want.
 
