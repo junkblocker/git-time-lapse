@@ -6,20 +6,186 @@ function! s:status(str) " {{{
     echo a:str
     redraw
 endfunction " }}}
+let s:cache = {}
+let s:cache_order = []
+let s:cache_max = 10
+
+" Tracks commits currently being prefetched: { commit: { left, right, log, done_count } }
+let s:inflight = {}
+
+function! s:cache_get(commit)
+    " Use has_key + direct access rather than get(..., v:null) because
+    " `x isnot v:null` is unreliable in Vim (always returns 0).
+    if has_key(s:cache, a:commit)
+        return s:cache[a:commit]
+    endif
+    return v:null
+endfunction
+
+function! s:cache_put(commit, data)
+    if !has_key(s:cache, a:commit)
+        call add(s:cache_order, a:commit)
+        if len(s:cache_order) > s:cache_max
+            let l:evict = remove(s:cache_order, 0)
+            unlet s:cache[l:evict]
+        endif
+    endif
+    let s:cache[a:commit] = a:data
+endfunction
+
+" ---- Prefetch helpers -------------------------------------------------------
+" Kicks off background jobs to populate the cache for commit at index `pos`.
+" Detects Neovim vs Vim 8 via has('nvim') and uses the correct job API for
+" each. All three git commands run in parallel; the cache entry is written
+" once all three exit successfully. If either API is unavailable (old Vim),
+" prefetch is silently skipped — s:display() always falls back to synchronous
+" systemlist() for uncached commits.
+
+function! s:prefetch(pos)
+    if a:pos < 0 || a:pos >= t:total - 1
+        return
+    endif
+    let l:commit = t:commits[a:pos]
+    " Skip if already cached or already in flight
+    if has_key(s:cache, l:commit) || has_key(s:inflight, l:commit)
+        return
+    endif
+
+    " Accumulator: left/right/log lines + per-slot exit codes + completion counter
+    let s:inflight[l:commit] = {
+        \ 'left': [], 'right': [], 'log': [],
+        \ 'exit_codes': [0, 0, 0],
+        \ 'done': 0,
+        \ }
+
+    let l:path = t:path  " capture tab-local var — closures in Vim/Nvim see l: not t:
+
+    if has('nvim')
+        " ---- Neovim: jobstart() ----
+        " stdout_buffered collects all output; on_stdout fires once before on_exit.
+        " Suppress stderr so git errors (e.g. root commit has no ^) are silent.
+        call jobstart(['git', 'show', l:commit . '^:' . l:path], {
+            \ 'stdout_buffered': 1,
+            \ 'stderr_buffered': 1,
+            \ 'on_stdout': {_, data, __ -> s:pfcb_nvim(l:commit, 'left',  data)},
+            \ 'on_exit':   {_, code, __ -> s:pfcb_exit(l:commit, 0, code)},
+            \ })
+        call jobstart(['git', 'show', l:commit . ':' . l:path], {
+            \ 'stdout_buffered': 1,
+            \ 'stderr_buffered': 1,
+            \ 'on_stdout': {_, data, __ -> s:pfcb_nvim(l:commit, 'right', data)},
+            \ 'on_exit':   {_, code, __ -> s:pfcb_exit(l:commit, 1, code)},
+            \ })
+        call jobstart(['git', 'log', '--stat', l:commit . '^..' . l:commit], {
+            \ 'stdout_buffered': 1,
+            \ 'stderr_buffered': 1,
+            \ 'on_stdout': {_, data, __ -> s:pfcb_nvim(l:commit, 'log',   data)},
+            \ 'on_exit':   {_, code, __ -> s:pfcb_exit(l:commit, 2, code)},
+            \ })
+    elseif exists('*job_start')
+        " ---- Vim 8+: job_start() ----
+        " out_cb fires once per output line; err_io 'null' silences stderr.
+        call job_start(['git', 'show', l:commit . '^:' . l:path], {
+            \ 'out_cb':  {_, line -> s:pfcb_vim(l:commit, 'left',  line)},
+            \ 'exit_cb': {_, code -> s:pfcb_exit(l:commit, 0, code)},
+            \ 'err_io':  'null',
+            \ })
+        call job_start(['git', 'show', l:commit . ':' . l:path], {
+            \ 'out_cb':  {_, line -> s:pfcb_vim(l:commit, 'right', line)},
+            \ 'exit_cb': {_, code -> s:pfcb_exit(l:commit, 1, code)},
+            \ 'err_io':  'null',
+            \ })
+        call job_start(['git', 'log', '--stat', l:commit . '^..' . l:commit], {
+            \ 'out_cb':  {_, line -> s:pfcb_vim(l:commit, 'log',   line)},
+            \ 'exit_cb': {_, code -> s:pfcb_exit(l:commit, 2, code)},
+            \ 'err_io':  'null',
+            \ })
+    else
+        " No async job API — remove the empty accumulator we just created
+        unlet s:inflight[l:commit]
+    endif
+endfunction
+
+" Neovim stdout callback: stdout_buffered delivers all lines at once.
+" Neovim appends a spurious trailing empty string; strip it.
+function! s:pfcb_nvim(commit, key, data)
+    if !has_key(s:inflight, a:commit)
+        return
+    endif
+    let l:lines = a:data
+    if !empty(l:lines) && l:lines[-1] ==# ''
+        let l:lines = l:lines[:-2]
+    endif
+    let s:inflight[a:commit][a:key] = l:lines
+endfunction
+
+" Vim 8 stdout callback: fires once per line.
+function! s:pfcb_vim(commit, key, line)
+    if has_key(s:inflight, a:commit)
+        call add(s:inflight[a:commit][a:key], a:line)
+    endif
+endfunction
+
+" Shared exit callback for both APIs.
+" slot: 0=left, 1=right, 2=log. code: process exit code.
+" Caches only when all three jobs finished without error.
+function! s:pfcb_exit(commit, slot, code)
+    if !has_key(s:inflight, a:commit)
+        return
+    endif
+    let l:inf = s:inflight[a:commit]
+    let l:inf['exit_codes'][a:slot] = a:code
+    let l:inf['done'] += 1
+    if l:inf['done'] == 3
+        " Only cache if all three git commands succeeded (exit 0).
+        " A non-zero exit (e.g. root commit with no parent, deleted file) means
+        " the data is incomplete; let s:display() handle it synchronously instead.
+        if l:inf['exit_codes'] == [0, 0, 0]
+            call s:cache_put(a:commit, [l:inf['left'], l:inf['right'], l:inf['log']])
+        endif
+        unlet s:inflight[a:commit]
+    endif
+endfunction
+
+function! s:prefetch_cancel_all()
+    " Discard all in-flight accumulators. Any jobs still running will fire
+    " their callbacks, which will silently no-op on the missing s:inflight key.
+    let s:inflight = {}
+endfunction
+
 function! s:display(commit)
-    " clears all input in every buffer of the tab
-    windo %d
-    diffoff!
-    wincmd t
-    exe ':silent :0 read !git show '.a:commit.s:fnameescape('^:').s:fnameescape(t:path)
-    exe 'doautocmd filetypedetect BufRead '.s:fnameescape(t:path)
+    " Serve from cache when the user backtracks over already-visited commits.
+    " For large files this avoids re-decompressing blobs from the pack file.
+    let l:cached = s:cache_get(a:commit)
+    if has_key(s:cache, a:commit)
+        let l:left_lines  = l:cached[0]
+        let l:right_lines = l:cached[1]
+        let l:log_lines   = l:cached[2]
+    else
+        let l:left_lines  = systemlist('git show ' . shellescape(a:commit . '^:' . t:path))
+        let l:right_lines = systemlist('git show ' . shellescape(a:commit . ':' . t:path))
+        let l:log_lines   = systemlist('git log --stat ' . shellescape(a:commit . '^..' . a:commit))
+        call s:cache_put(a:commit, [l:left_lines, l:right_lines, l:log_lines])
+    endif
 
-    wincmd l
-    exe ':silent :0 read !git show '.a:commit.s:fnameescape(':').s:fnameescape(t:path)
-    exe 'doautocmd filetypedetect BufRead '.s:fnameescape(t:path)
+    " Suppress autocommands while clearing and filling buffers to avoid
+    " triggering expensive autocommand chains (LSP, syntax, linters) on every
+    " navigation keystroke.
+    noautocmd wincmd t
+    noautocmd %d
+    diffoff
+    call setline(1, l:left_lines)
+    exe 'doautocmd filetypedetect BufRead ' . s:fnameescape(t:path)
 
-    wincmd j
-    exe ':silent :0 read !git log --stat '.a:commit.s:fnameescape('^..').a:commit
+    noautocmd wincmd l
+    noautocmd %d
+    diffoff
+    call setline(1, l:right_lines)
+    exe 'doautocmd filetypedetect BufRead ' . s:fnameescape(t:path)
+
+    noautocmd wincmd j
+    noautocmd %d
+    call setline(1, l:log_lines)
     setfiletype git
 
     wincmd t
@@ -45,6 +211,11 @@ function! s:display(commit)
     wincmd j
     normal! gg
     redraw!
+
+    " Kick off background prefetch for the two neighbouring commits so the
+    " next keypress is likely a cache hit.
+    call s:prefetch(t:current - 1)
+    call s:prefetch(t:current + 1)
 endfunction
 
 function! s:goto(pos, last)
@@ -81,8 +252,6 @@ function! s:blame()
 
     let output = system('git blame -p -n -L'.shellescape(line).','.shellescape(line).' '.
                         \shellescape(current).' -- '.shellescape(t:path))
-    exe ':silent :!git log --no-merges ' . s:fnameescape('--pretty=format:%H'). ' '.s:fnameescape(t:path).' > '.s:fnameescape(s:tmpfile)
-
     let results = split(output)
 
     if results[0] == "fatal:"
@@ -90,12 +259,11 @@ function! s:blame()
         return
     endif
 
-    for i in range(len(t:commits))
-        if t:commits[i] =~ results[0]
-            call s:goto(i, 0)
-            break
-        endif
-    endfor
+    " O(1) lookup via the index map built in s:get_log()
+    let l:idx = get(t:commit_index, results[0], -1)
+    if l:idx >= 0
+        call s:goto(l:idx, 0)
+    endif
 
     wincmd t
     wincmd l
@@ -105,11 +273,15 @@ function! s:blame()
 endfunction
 
 function! s:get_log()
-    let s:tmpfile = tempname()
-    exe ':silent :!git log --no-merges ' . s:fnameescape('--pretty=format:%H'). ' '.s:fnameescape(t:path).' > '.s:fnameescape(s:tmpfile)
-    let t:commits = readfile(s:tmpfile)
-    call delete(s:tmpfile)
+    let t:commits = systemlist('git log --no-merges --pretty=format:%H ' . shellescape(t:path))
     let t:total = len(t:commits)
+
+    " Build a hash→index map so s:blame() can jump in O(1) instead of O(N)
+    let t:commit_index = {}
+    for i in range(t:total)
+        let t:commit_index[t:commits[i]] = i
+    endfor
+
     return t:total
 endfunction
 
@@ -154,6 +326,9 @@ function! gittimelapse#git_time_lapse()
 
     tabnew
     let t:path = path
+    let s:cache = {}
+    let s:cache_order = []
+    call s:prefetch_cancel_all()
 
     if s:get_log() <= 1
         echoerr "Insufficient log entries"
